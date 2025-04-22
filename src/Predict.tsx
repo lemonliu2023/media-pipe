@@ -1,27 +1,19 @@
 import { DrawingUtils, PoseLandmarker } from '@mediapipe/tasks-vision';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 let lastVideoTime = -1;
 
-function Predict({ width, height, poseLandmarkerRef }: { width: number; height: number; poseLandmarkerRef: React.RefObject<PoseLandmarker | null> }) {
+function Predict({ poseLandmarkerRef }: { width: number; height: number; poseLandmarkerRef: React.RefObject<PoseLandmarker | null> }) {
   const [enableCamera, setEnableCamera] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingUtilsRef = useRef<DrawingUtils>(null);
   const canvasCtxRef = useRef<CanvasRenderingContext2D>(null);
-
-  useEffect(() => {
-    if (canvasRef.current) {
-      console.log(canvasRef.current);
-      canvasCtxRef.current = canvasRef.current.getContext('2d')!;
-      drawingUtilsRef.current = new DrawingUtils(canvasCtxRef.current);
-    }
-  }, []);
-
-  async function predictWebcam() {
-    if (!canvasRef.current) return;
-    // canvasRef.current.style.height = `${videoRef.current?.clientHeight}`;
-    // canvasRef.current.style.width = `${videoRef.current?.clientWidth}`;
+  const [size, setSize] = useState({
+    width: 0,
+    height: 0,
+  });
+  function predictWebcam() {
     // Now let's start detecting the stream.
     const startTimeMs = performance.now();
     if (lastVideoTime !== videoRef.current?.currentTime) {
@@ -35,6 +27,7 @@ function Predict({ width, height, poseLandmarkerRef }: { width: number; height: 
           });
           drawingUtilsRef.current?.drawConnectors(landmark, PoseLandmarker.POSE_CONNECTIONS);
         }
+        console.log(canvasCtxRef.current, '####');
         canvasCtxRef.current?.restore();
       });
     }
@@ -64,7 +57,18 @@ function Predict({ width, height, poseLandmarkerRef }: { width: number; height: 
         if (videoRef.current) {
           setEnableCamera(true);
           videoRef.current.srcObject = stream;
-          videoRef.current.addEventListener('loadeddata', predictWebcam);
+          videoRef.current.addEventListener('loadeddata', () => {
+            const { videoWidth, videoHeight } = videoRef.current!;
+            setSize({
+              width: videoWidth,
+              height: videoHeight,
+            });
+            setTimeout(() => {
+              canvasCtxRef.current = canvasRef.current!.getContext('2d');
+              drawingUtilsRef.current = new DrawingUtils(canvasCtxRef.current!);
+              predictWebcam();
+            });
+          });
         }
       });
   }
@@ -75,15 +79,15 @@ function Predict({ width, height, poseLandmarkerRef }: { width: number; height: 
         ref={videoRef}
         playsInline
         autoPlay
-        width={width}
-        height={height}
+        width={size.width}
+        height={size.height}
         style={{ display: enableCamera ? 'block' : 'none', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
         className="absolute"
       ></video>
       <canvas
         id="canvas"
-        width={width}
-        height={height}
+        width={size.width}
+        height={size.height}
         ref={canvasRef}
         style={{ display: enableCamera ? 'block' : 'none', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' /* 居中 */ }}
         className="absolute"
