@@ -110,7 +110,7 @@ function App() {
         width={1280}
         height={720}
         ref={canvasRef}
-        style={{ display: enableCamera ? 'block' : 'none', left: 0, right: 0 }}
+        style={{ display: enableCamera ? 'block' : 'none', left: 0, top: 0 }}
         className="absolute"
       ></canvas>
     </div>
