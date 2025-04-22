@@ -96,7 +96,13 @@ function App() {
   return (
     <div className="container flex items-center justify-center h-screen relative">
       {!enableCamera && <button onClick={() => enableCam()}>enable camera</button>}
-      <video ref={videoRef} playsInline autoPlay style={{ display: enableCamera ? 'block' : 'none', maxWidth: 'unset' }} className="w-[1280px] h-[720px]"></video>
+      <video
+        ref={videoRef}
+        playsInline
+        autoPlay
+        style={{ display: enableCamera ? 'block' : 'none', maxWidth: 'unset' }}
+        className="absolute w-[1280px] h-[720px]"
+      ></video>
       <canvas id="canvas" width={1280} height={720} ref={canvasRef} style={{ display: enableCamera ? 'block' : 'none' }} className="absolute"></canvas>
     </div>
   );
