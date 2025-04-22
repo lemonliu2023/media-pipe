@@ -100,10 +100,19 @@ function App() {
         ref={videoRef}
         playsInline
         autoPlay
-        style={{ display: enableCamera ? 'block' : 'none', maxWidth: 'unset' }}
-        className="absolute w-[1280px] h-[720px]"
+        width={1280}
+        height={720}
+        style={{ display: enableCamera ? 'block' : 'none', maxWidth: 'unset', left: 0, top: 0 }}
+        className="absolute"
       ></video>
-      <canvas id="canvas" width={1280} height={720} ref={canvasRef} style={{ display: enableCamera ? 'block' : 'none' }} className="absolute"></canvas>
+      <canvas
+        id="canvas"
+        width={1280}
+        height={720}
+        ref={canvasRef}
+        style={{ display: enableCamera ? 'block' : 'none', left: 0, right: 0 }}
+        className="absolute"
+      ></canvas>
     </div>
   );
 }
