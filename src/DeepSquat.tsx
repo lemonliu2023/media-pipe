@@ -77,6 +77,12 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
         }
         setEnableCamera(true);
         startPoseDetection();
+        const audio = rewardSoundRef.current;
+        audio.play().then(() => {
+            audio.pause(); // 立即暂停，解锁播放权限
+            audio.currentTime = 0; // 回到开头
+            // 后续你可以通过状态变化来控制播放
+          });
       })
       .catch((err) => {
         console.error(err);
