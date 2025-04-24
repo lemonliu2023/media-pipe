@@ -37,7 +37,7 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
   const canvasCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [squatCount, setSquatCount] = useState(0);
   const squatStateRef = useRef<'standing' | 'squatting'>('standing');
-  const rewardSoundRef = useRef<HTMLAudioElement>(new Audio(`${location.href}/mario-coin.wav`));
+  const rewardSoundRef = useRef<HTMLAudioElement>(new Audio(`${location.href}/silent_1s.mp3`));
   useEffect(() => {
     if (canvasRef.current) {
       canvasCtxRef.current = canvasRef.current.getContext('2d');
@@ -81,6 +81,7 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
         audio.play().then(() => {
             audio.pause(); // 立即暂停，解锁播放权限
             audio.currentTime = 0; // 回到开头
+            rewardSoundRef.current = new Audio(`${location.href}/mario-coin.wav`);
             // 后续你可以通过状态变化来控制播放
           });
       })
