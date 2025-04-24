@@ -1,16 +1,18 @@
+'use client';
 import { useEffect, useRef, useState } from 'react';
-import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import DeepSquat from './DeepSquat';
+import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
 
-function App() {
+export default function Home() {
   const [loadingModel, setLoadingModel] = useState(false);
   const poseLandmarkerRef = useRef<PoseLandmarker>(null);
-  const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const handleResize = () => {
       setSize({ width: window.innerWidth, height: window.innerHeight });
     };
+    handleResize(); // 初始化大小
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
@@ -43,5 +45,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
