@@ -22,10 +22,10 @@ export default function Home() {
   useEffect(() => {
     setLoadingModel(true);
     const createPoseLandmarker = async () => {
-      const vision = await FilesetResolver.forVisionTasks(`${window.location.href}/wasm`);
+      const vision = await FilesetResolver.forVisionTasks(`${window.location.href}wasm`);
       poseLandmarkerRef.current = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: `${window.location.href}/pose_landmarker_lite.task`,
+          modelAssetPath: `${window.location.href}pose_landmarker_lite.task`,
           delegate: 'GPU',
         },
         runningMode: 'VIDEO',
