@@ -1,7 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { NormalizedLandmark, PoseLandmarker, PoseLandmarkerResult } from '@mediapipe/tasks-vision';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 function getCameraStream(): Promise<MediaStream> {
   return new Promise((res, rej) => {
@@ -48,12 +48,11 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
       }
     }
   }, []);
-  useEffect(() => {
+  const resizeCanvas = useCallback(function() {
     if (!videoRef.current || !canvasRef.current) return;
     const videoRatio = videoRef.current.videoWidth / videoRef.current.videoHeight;
-    console.log(videoRatio, 'videoRatio')
     const displayRatio = width / height;
-    console.log(displayRatio, 'displayRatio')
+    if (!videoRatio || !displayRatio) return;
 
     let renderWidth, renderHeight;
     if (videoRatio > displayRatio) {
@@ -65,10 +64,9 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
     }
 
     canvasRef.current.style.width = `${renderWidth}px`;
-    console.log(renderWidth, 'renderWidth');
-    console.log(renderHeight, 'renderHeight');
     canvasRef.current.style.height = `${renderHeight}px`;
   }, [width, height]);
+  useEffect(resizeCanvas, [resizeCanvas]);
   function enableCamHandler() {
     getCameraStream()
       .then((stream) => {
@@ -78,6 +76,7 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
             if (canvasRef.current) {
               canvasRef.current.width = videoRef.current?.videoWidth || 0;
               canvasRef.current.height = videoRef.current?.videoHeight || 0;
+              resizeCanvas();
             }
           });
         }
