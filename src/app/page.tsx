@@ -3,12 +3,16 @@ import { useEffect, useRef, useState } from 'react';
 import DeepSquat from './components/DeepSquat';
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
 
+
 export default function Home() {
   const [loadingModel, setLoadingModel] = useState(true);
   const poseLandmarkerRef = useRef<PoseLandmarker>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
+    import('vconsole').then((vconsole) => {
+      new vconsole.default();
+    });
     const handleResize = () => {
       setSize({ width: window.innerWidth, height: window.innerHeight });
     };
