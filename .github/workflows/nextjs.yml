@@ -61,12 +61,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-        with:
-          static_site_generator: next
       - name: Build with Next.js
         run: pnpm next build
+      - name: echo ls
+        run: ls
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
