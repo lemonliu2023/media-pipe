@@ -1,13 +1,24 @@
 'use client';
 import { Button } from '@/components/ui/button';
-import { NormalizedLandmark, PoseLandmarker, PoseLandmarkerResult } from '@mediapipe/tasks-vision';
+import { Landmark, NormalizedLandmark, PoseLandmarker, PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { throttle } from 'lodash-es';
 import { Toaster } from '@/components/ui/sonner';
 
+interface HistoryItemType {
+  kneeAngle: number;
+  hipY: number;
+  kneeY: number;
+  backTilt: number;
+  timestamp: number;
+}
+
+const history: HistoryItemType[] = [];
+const WINDOW_SIZE = 30; // 窗口大小
+
 // 节流函数，避免重复点击
-const showErrorToast = throttle(() => toast.error('请确保全身在摄像头前可见'), 1000);
+const throttleToast = throttle(toast, 1000);
 
 function getCameraStream(): Promise<MediaStream> {
   return new Promise((res, rej) => {
@@ -44,7 +55,7 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [squatCount, setSquatCount] = useState(0);
-  const squatStateRef = useRef<'standing' | 'squatting'>('standing');
+  const squatStateRef = useRef<'standing' | 'squatting' | 'returning'>('standing');
   const rewardSoundRef = useRef<HTMLAudioElement | undefined>(typeof Audio !== 'undefined' ? new Audio(`${location.href}/silent_1s.mp3`) : undefined);
   useEffect(() => {
     if (canvasRef.current) {
@@ -175,9 +186,10 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
     return landmark.x >= 0 && landmark.x <= 1 && landmark.y >= 0 && landmark.y <= 1;
   }
 
-  // 检测深蹲动作
   function detectSquat(landmarks: NormalizedLandmark[]) {
     // 关键点索引（MediaPipe Pose）
+    const leftShoulder = landmarks[11]; // 左肩
+    const rightShoulder = landmarks[12]; // 右肩
     const leftHip = landmarks[23]; // 左髋
     const leftKnee = landmarks[25]; // 左膝
     const leftAnkle = landmarks[27]; // 左踝
@@ -187,6 +199,8 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
 
     // 确保关键点可见
     if (
+      !isLandmarkVisible(leftShoulder) ||
+      !isLandmarkVisible(rightShoulder) ||
       !isLandmarkVisible(leftHip) ||
       !isLandmarkVisible(leftKnee) ||
       !isLandmarkVisible(leftAnkle) ||
@@ -194,12 +208,12 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
       !isLandmarkVisible(rightKnee) ||
       !isLandmarkVisible(rightAnkle)
     ) {
-      showErrorToast();
+      throttleToast('请确保身体在摄像头前可见');
       return;
     }
 
-    // 计算膝盖角度（使用左右平均）
-    function calculateAngle(a: NormalizedLandmark, b: NormalizedLandmark, c: NormalizedLandmark) {
+    // 计算膝盖角度
+    function calculateAngle(a: Landmark, b: Landmark, c: Landmark) {
       const vectorBA = { x: a.x - b.x, y: a.y - b.y };
       const vectorBC = { x: c.x - b.x, y: c.y - b.y };
       const dotProduct = vectorBA.x * vectorBC.x + vectorBA.y * vectorBC.y;
@@ -213,20 +227,82 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
     const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
     const averageKneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
 
-    // 髋部高度（使用左右平均）
+    // 髋部和膝盖高度
     const averageHipY = (leftHip.y + rightHip.y) / 2;
     const averageKneeY = (leftKnee.y + rightKnee.y) / 2;
 
-    // 深蹲判断
-    const isSquatting = averageKneeAngle < 100 && averageHipY > averageKneeY * 0.9;
+    // 计算背部角度（肩部-髋部相对于垂直线的角度）
+    const averageShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+    const averageShoulderX = (leftShoulder.x + rightShoulder.x) / 2;
+    const averageHipX = (leftHip.x + rightHip.x) / 2;
+    const backAngle = Math.atan2(averageHipY - averageShoulderY, averageHipX - averageShoulderX) * (180 / Math.PI);
+    const backTilt = Math.abs(backAngle - 90); // 相对于垂直线的偏离角度
 
-    const squatState = squatStateRef.current;
+    // 存储当前帧数据
+    history.push({
+      kneeAngle: averageKneeAngle,
+      hipY: averageHipY,
+      kneeY: averageKneeY,
+      backTilt: backTilt,
+      timestamp: performance.now()
+    });
+
+    // 保持窗口大小
+    if (history.length > WINDOW_SIZE) {
+      history.shift();
+    }
+
+    // 分析时间窗口内的数据
+    if (history.length < WINDOW_SIZE) {
+      // feedbackElement.style.display = 'none';
+      throttleToast('数据填充中，请稍等...');
+      return; // 等待窗口填满
+    }
+
+    // 计算窗口内的统计数据
+    const kneeAngles = history.map(h => h.kneeAngle);
+    const hipYs = history.map(h => h.hipY);
+    const kneeYs = history.map(h => h.kneeY);
+    const backTilts = history.map(h => h.backTilt);
+
+    const avgKneeAngle = kneeAngles.reduce((sum, val) => sum + val, 0) / kneeAngles.length;
+    const avgHipY = hipYs.reduce((sum, val) => sum + val, 0) / hipYs.length;
+    const avgKneeY = kneeYs.reduce((sum, val) => sum + val, 0) / kneeYs.length;
+    const avgBackTilt = backTilts.reduce((sum, val) => sum + val, 0) / backTilts.length;
+
+    // 深蹲状态判断
+    const isSquatting = avgKneeAngle < 100 && avgHipY > avgKneeY * 0.9;
+    const isStanding = avgKneeAngle > 150 && avgHipY < avgKneeY * 0.7;
+
+    // 姿势反馈
+    let feedbackMessage = '';
+    if (avgKneeAngle < 100) {
+      // 在下蹲尝试中
+      if (avgHipY < avgKneeY * 0.9) {
+        feedbackMessage = '请蹲得更低';
+      } else if (avgBackTilt > 20) {
+        feedbackMessage = '请保持背部直立';
+      }
+    }
+
+    // 更新反馈显示
+    if (feedbackMessage) {
+      // feedbackElement.textContent = feedbackMessage;
+      // feedbackElement.style.display = 'block';
+      throttleToast(feedbackMessage);
+    } else {
+      // feedbackElement.style.display = 'none';
+    }
+
     const rewardSound = rewardSoundRef.current;
+    const squatState = squatStateRef.current;
 
     // 状态机
     if (squatState === 'standing' && isSquatting) {
       squatStateRef.current = 'squatting';
-    } else if (squatState === 'squatting' && !isSquatting) {
+    } else if (squatState === 'squatting' && isStanding) {
+      squatStateRef.current = 'returning';
+    } else if (squatState === 'returning' && isStanding) {
       squatStateRef.current = 'standing';
       setSquatCount((pre) => pre + 1);
       rewardSound?.play().catch((err) => console.error('音效播放失败:', err));
