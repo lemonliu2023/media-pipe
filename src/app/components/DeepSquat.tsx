@@ -2,6 +2,12 @@
 import { Button } from '@/components/ui/button';
 import { NormalizedLandmark, PoseLandmarker, PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { throttle } from 'lodash-es';
+import { Toaster } from '@/components/ui/sonner';
+
+// 节流函数，避免重复点击
+const showErrorToast = throttle(() => toast.error('请确保全身在摄像头前可见'), 1000);
 
 function getCameraStream(): Promise<MediaStream> {
   return new Promise((res, rej) => {
@@ -48,24 +54,27 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
       }
     }
   }, []);
-  const resizeCanvas = useCallback(function() {
-    if (!videoRef.current || !canvasRef.current) return;
-    const videoRatio = videoRef.current.videoWidth / videoRef.current.videoHeight;
-    const displayRatio = width / height;
-    if (!videoRatio || !displayRatio) return;
+  const resizeCanvas = useCallback(
+    function () {
+      if (!videoRef.current || !canvasRef.current) return;
+      const videoRatio = videoRef.current.videoWidth / videoRef.current.videoHeight;
+      const displayRatio = width / height;
+      if (!videoRatio || !displayRatio) return;
 
-    let renderWidth, renderHeight;
-    if (videoRatio > displayRatio) {
-      renderWidth = width;
-      renderHeight = width / videoRatio;
-    } else {
-      renderHeight = height;
-      renderWidth = height * videoRatio;
-    }
+      let renderWidth, renderHeight;
+      if (videoRatio > displayRatio) {
+        renderWidth = width;
+        renderHeight = width / videoRatio;
+      } else {
+        renderHeight = height;
+        renderWidth = height * videoRatio;
+      }
 
-    canvasRef.current.style.width = `${renderWidth}px`;
-    canvasRef.current.style.height = `${renderHeight}px`;
-  }, [width, height]);
+      canvasRef.current.style.width = `${renderWidth}px`;
+      canvasRef.current.style.height = `${renderHeight}px`;
+    },
+    [width, height]
+  );
   useEffect(resizeCanvas, [resizeCanvas]);
   function enableCamHandler() {
     getCameraStream()
@@ -185,6 +194,7 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
       !isLandmarkVisible(rightKnee) ||
       !isLandmarkVisible(rightAnkle)
     ) {
+      showErrorToast();
       return;
     }
 
@@ -235,7 +245,7 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
           style={{
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
           }}
-          className="fixed top-[20px] left-[20px] text-[#fff] text-2xl p-[10px] rounded-[10px]"
+          className="fixed top-[20px] left-[20px] text-[#fff] p-[10px] rounded-[10px]"
           onClick={() => {
             rewardSoundRef.current?.play().catch((err) => console.error('音效播放失败:', err));
           }}
@@ -246,6 +256,7 @@ function DeepSquat({ width, height, poseLandmarkerRef }: { width: number; height
       <div style={{ display: enableCamera ? 'none' : 'block' }}>
         <Button onClick={() => enableCamHandler()}>打开摄像头</Button>
       </div>
+      <Toaster visibleToasts={1} />
     </>
   );
 }
